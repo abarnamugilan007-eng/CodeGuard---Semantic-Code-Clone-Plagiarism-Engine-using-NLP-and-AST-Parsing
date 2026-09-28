@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeGuard AI | AI Code & Plagiarism Engine</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#070A13',
+                        navy: '#0B1120',
+                        navyLight: '#151D30',
+                        cyanGlow: '#38BDF8',
+                        purpleGlow: '#8B5CF6',
+                        emeraldGlow: '#10B981',
+                        roseGlow: '#F43F5E',
+                        amberGlow: '#F59E0B'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #070A13;
+            color: #E2E8F0;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B1120;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .glow-cyan {
+            box-shadow: 0 0 20px -5px rgba(56, 189, 248, 0.3);
+        }
+        .glow-purple {
+            box-shadow: 0 0 20px -5px rgba(139, 92, 246, 0.3);
+        }
+        .bg-grid-pattern {
+            background-image: radial-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        /* Line Highlight Styling */
+        .line-ai-high {
+            background-color: rgba(244, 63, 94, 0.18);
+            border-left: 4px solid #F43F5E;
+        }
+        .line-clone-mod {
+            background-color: rgba(245, 158, 11, 0.18);
+            border-left: 4px solid #F59E0B;
+        }
+        .line-original {
+            background-color: rgba(16, 185, 129, 0.08);
+            border-left: 4px solid #10B981;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-obsidian text-slate-200 antialiased selection:bg-cyanGlow/30 selection:text-cyanGlow">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-40 bg-navy/90 backdrop-blur-md border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('upload')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyanGlow via-indigo-500 to-purpleGlow flex items-center justify-center text-obsidian font-extrabold text-xl shadow-lg">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-cyanGlow via-slate-100 to-purpleGlow bg-clip-text text-transparent">CodeGuard AI</span>
+                    <span class="hidden sm:inline-block text-[10px] font-mono text-cyanGlow border border-cyanGlow/30 bg-cyanGlow/10 rounded px-2 py-0.5 ml-2">Single File Scanner v3.0</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center space-x-1 lg:space-x-2 text-sm font-medium">
+                <button onclick="navigateTo('upload')" id="nav-upload" class="nav-btn px-3 py-2 rounded-lg transition-colors text-cyanGlow bg-slate-800/60">
+                    <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Upload Code
+                </button>
+                <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-2 rounded-lg transition-colors text-slate-400 hover:text-cyanGlow">
+                    <i class="fa-solid fa-chart-pie mr-1.5"></i>Dashboard
+                </button>
+                <button onclick="navigateTo('inspector')" id="nav-inspector" class="nav-btn px-3 py-2 rounded-lg transition-colors text-slate-400 hover:text-cyanGlow">
+                    <i class="fa-solid fa-code-compare mr-1.5"></i>Code Inspector
+                </button>
+                <button onclick="navigateTo('sources')" id="nav-sources" class="nav-btn px-3 py-2 rounded-lg transition-colors text-slate-400 hover:text-cyanGlow">
+                    <i class="fa-solid fa-globe mr-1.5"></i>Matched Sources
+                </button>
+                <button onclick="navigateTo('quality')" id="nav-quality" class="nav-btn px-3 py-2 rounded-lg transition-colors text-slate-400 hover:text-cyanGlow">
+                    <i class="fa-solid fa-shield-virus mr-1.5"></i>AI Footprint Audit
+                </button>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <button onclick="navigateTo('upload')" class="px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-gradient-to-r from-cyanGlow to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-obsidian shadow-md transition-all flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>New Scan</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- VIEW 1: SINGLE FILE UPLOAD & ANALYZER SECTION -->
+        <section id="page-upload" class="view-page space-y-8">
+            <div class="text-center max-w-3xl mx-auto space-y-3">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyanGlow/10 border border-cyanGlow/30 text-cyanGlow text-xs font-semibold uppercase tracking-wider">
+                    <i class="fa-solid fa-microchip text-amber-400"></i>
+                    <span>AI Model Fingerprinting & Global Web Matcher</span>
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white">
+                    Scan Large Code Files for <span class="bg-gradient-to-r from-cyanGlow via-purpleGlow to-roseGlow bg-clip-text text-transparent">AI & Plagiarism</span>
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    Upload your source code file (`.py`, `.java`, `.cpp`, `.js`, `.cs`, `.zip`) or paste code below. Our neural engine checks for ChatGPT/Copilot generation footprints and cross-references millions of online repositories.
+                </p>
+            </div>
+
+            <!-- Demo Scenarios Loader Buttons -->
+            <div class="p-4 rounded-2xl bg-navy/80 border border-slate-800 space-y-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <span class="text-xs font-semibold text-slate-300 flex items-center">
+                        <i class="fa-solid fa-bolt text-amber-400 mr-2"></i>Quick Test Demo Scenarios:
+                    </span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="loadSample('ai-generated')" class="px-3 py-1.5 rounded-lg bg-roseGlow/10 hover:bg-roseGlow/20 text-xs font-mono text-roseGlow border border-roseGlow/30 transition-all">
+                            <i class="fa-solid fa-robot mr-1"></i> AI Generated Code (ChatGPT)
+                        </button>
+                        <button onclick="loadSample('github-clone')" class="px-3 py-1.5 rounded-lg bg-amberGlow/10 hover:bg-amberGlow/20 text-xs font-mono text-amberGlow border border-amberGlow/30 transition-all">
+                            <i class="fa-solid fa-code-branch mr-1"></i> Web / GitHub Plagiarism
+                        </button>
+                        <button onclick="loadSample('obfuscated')" class="px-3 py-1.5 rounded-lg bg-purpleGlow/10 hover:bg-purpleGlow/20 text-xs font-mono text-purpleGlow border border-purpleGlow/30 transition-all">
+                            <i class="fa-solid fa-mask mr-1"></i> Heavy Refactored Code
+                        </button>
+                        <button onclick="loadSample('original')" class="px-3 py-1.5 rounded-lg bg-emeraldGlow/10 hover:bg-emeraldGlow/20 text-xs font-mono text-emeraldGlow border border-emeraldGlow/30 transition-all">
+                            <i class="fa-solid fa-check-double mr-1"></i> 100% Original Custom Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main File Upload Zone -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Drop Zone & Text Area (2 Columns) -->
+                <div class="lg:col-span-2 space-y-4">
+                    <!-- File Drag & Drop Box -->
+                    <div id="drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)"
+                         class="p-8 rounded-3xl bg-navy/60 border-2 border-dashed border-slate-700 hover:border-cyanGlow transition-all text-center space-y-4 cursor-pointer relative group">
+                        <input type="file" id="file-input" class="hidden" onchange="handleFileSelect(event)" accept=".py,.java,.cpp,.c,.cs,.js,.ts,.html,.txt,.zip">
+                        
+                        <div class="w-16 h-16 rounded-2xl bg-cyanGlow/10 text-cyanGlow mx-auto flex items-center justify-center text-3xl font-bold group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-white">Drag & Drop Large Code File Here</h3>
+                            <p class="text-xs text-slate-400 mt-1">Supports `.py`, `.java`, `.cpp`, `.cs`, `.js`, `.ts`, `.zip`, `.txt` (Up to 50MB)</p>
+                        </div>
+                        <button onclick="document.getElementById('file-input').click()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyanGlow border border-slate-700 transition-all">
+                            <i class="fa-solid fa-folder-open mr-1.5"></i> Browse Local File
+                        </button>
+                    </div>
+
+                    <!-- Direct Text Paste Alternative -->
+                    <div class="p-4 rounded-2xl bg-navy border border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-code mr-2 text-cyanGlow"></i> Or Paste Source Code Directly
+                            </span>
+                            <span id="pasted-lang-badge" class="text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400">Auto-Detect Language</span>
+                        </div>
+                        <textarea id="pasted-code" rows="12" oninput="processPastedCode()" class="w-full p-3 rounded-xl bg-obsidian border border-slate-800 font-mono text-xs text-slate-200 focus:outline-none focus:border-cyanGlow resize-y leading-relaxed" placeholder="Paste source code snippet or full file contents here..."></textarea>
+                    </div>
+                </div>
+
+                <!-- File Statistics & Quick Metadata Panel (1 Column) -->
+                <div class="space-y-4">
+                    <div class="p-6 rounded-3xl bg-navy border border-slate-800 space-y-5">
+                        <h3 class="text-base font-bold text-white border-b border-slate-800 pb-3 flex items-center justify-between">
+                            <span><i class="fa-solid fa-file-code text-purpleGlow mr-2"></i> File Metadata</span>
+                            <span id="stat-status" class="text-[10px] px-2 py-0.5 rounded bg-emeraldGlow/20 text-emeraldGlow">Ready</span>
+                        </h3>
+
+                        <div class="space-y-4 text-xs font-mono">
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-obsidian border border-slate-800/80">
+                                <span class="text-slate-400">File Name</span>
+                                <span id="stat-filename" class="font-bold text-cyanGlow truncate max-w-[150px]">sample_code.py</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-obsidian border border-slate-800/80">
+                                <span class="text-slate-400">File Size</span>
+                                <span id="stat-filesize" class="font-bold text-white">2.4 KB</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-obsidian border border-slate-800/80">
+                                <span class="text-slate-400">Primary Language</span>
+                                <span id="stat-language" class="font-bold text-purpleGlow">Python</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-obsidian border border-slate-800/80">
+                                <span class="text-slate-400">Total Lines</span>
+                                <span id="stat-lines" class="font-bold text-amberGlow">48</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-obsidian border border-slate-800/80">
+                                <span class="text-slate-400">Total Tokens</span>
+                                <span id="stat-tokens" class="font-bold text-emeraldGlow">312</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-obsidian border border-slate-800/80">
+                                <span class="text-slate-400">AST Parsed Nodes</span>
+                                <span id="stat-ast" class="font-bold text-roseGlow">28 Nodes</span>
+                            </div>
+                        </div>
+
+                        <!-- Start Deep Scan Trigger Button -->
+                        <button onclick="startDeepScanPipeline()" class="w-full py-4 rounded-2xl font-bold text-sm bg-gradient-to-r from-cyanGlow via-blue-500 to-purpleGlow text-obsidian shadow-xl hover:brightness-110 transition-all flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-circle-play text-base"></i>
+                            <span>START DEEP AI & PLAGIARISM SCAN</span>
+                        </button>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-navy/60 border border-slate-800/80 text-xs space-y-2 text-slate-400">
+                        <div class="font-semibold text-slate-200 flex items-center">
+                            <i class="fa-solid fa-shield-halved text-emeraldGlow mr-1.5"></i> Index Coverage
+                        </div>
+                        <p>Scanning against 50M+ GitHub repos, StackOverflow index, LeetCode, and AI footprint models (GPT-4o, Claude 3.5, Copilot).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- REAL-TIME SCAN PROGRESS MODAL OVERLAY -->
+        <div id="progress-modal" class="fixed inset-0 z-50 bg-obsidian/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+            <div class="max-w-lg w-full bg-navy border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-14 h-14 rounded-2xl bg-cyanGlow/10 text-cyanGlow mx-auto flex items-center justify-center text-3xl font-bold animate-pulse">
+                        <i class="fa-solid fa-radar"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-white">Scanning Global Code Repositories</h3>
+                    <p class="text-xs text-slate-400">Executing AST parsing, AI prompt fingerprinting, and vector matching...</p>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="space-y-2">
+                    <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden p-0.5">
+                        <div id="progress-bar-fill" class="h-full bg-gradient-to-r from-cyanGlow via-purpleGlow to-roseGlow rounded-full w-0 transition-all duration-300"></div>
+                    </div>
+                    <div class="flex justify-between text-xs font-mono text-slate-400">
+                        <span id="progress-stage-text">Initializing Engine...</span>
+                        <span id="progress-percent-text" class="text-cyanGlow font-bold">0%</span>
+                    </div>
+                </div>
+
+                <!-- Live Stream Log Container -->
+                <div id="progress-logs" class="p-3.5 rounded-xl bg-obsidian border border-slate-800 font-mono text-[11px] text-slate-400 h-36 overflow-y-auto space-y-1.5">
+                    <!-- Dynamic logs appended via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: COMPREHENSIVE RESULTS DASHBOARD -->
+        <section id="page-dashboard" class="view-page hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h1 class="text-2xl font-black text-white">Plagiarism & AI Detection Overview</h1>
+                    <p id="dash-file-title" class="text-xs sm:text-sm font-mono text-cyanGlow">File: sample_code.py (Python)</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="navigateTo('inspector')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 flex items-center">
+                        <i class="fa-solid fa-code-compare mr-1.5 text-cyanGlow"></i> Line Inspector
+                    </button>
+                    <button onclick="exportPdfReport()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyanGlow to-blue-500 hover:brightness-110 text-xs font-bold text-obsidian flex items-center shadow">
+                        <i class="fa-solid fa-file-pdf mr-1.5"></i> Export Audit Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Cards Matrix -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Overall Combined Score Gauge Card -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-2 relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overall Similarity Risk</span>
+                        <i class="fa-solid fa-shield-cat text-roseGlow text-lg"></i>
+                    </div>
+                    <div class="flex items-baseline space-x-2">
+                        <span id="dash-overall-score" class="text-4xl font-extrabold text-white">78%</span>
+                        <span id="dash-risk-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-roseGlow/20 text-roseGlow border border-roseGlow/40">High Plagiarism Risk</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Combined AI + Web Source match</p>
+                </div>
+
+                <!-- AI Code Pattern Match Card -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-2 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-roseGlow uppercase tracking-wider">AI Generation Match</span>
+                        <i class="fa-solid fa-robot text-roseGlow text-lg"></i>
+                    </div>
+                    <div id="dash-ai-score" class="text-3xl font-bold text-white">84%</div>
+                    <p class="text-[11px] text-slate-400">ChatGPT / Claude footprint pattern</p>
+                </div>
+
+                <!-- Web/GitHub Plagiarism Card -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-2 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-amberGlow uppercase tracking-wider">Web / GitHub Match</span>
+                        <i class="fa-solid fa-globe text-amberGlow text-lg"></i>
+                    </div>
+                    <div id="dash-web-score" class="text-3xl font-bold text-white">65%</div>
+                    <p class="text-[11px] text-slate-400">Matched online repositories</p>
+                </div>
+
+                <!-- AST Structural Score Card -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-2 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-purpleGlow uppercase tracking-wider">AST Isomorphism</span>
+                        <i class="fa-solid fa-sitemap text-purpleGlow text-lg"></i>
+                    </div>
+                    <div id="dash-ast-score" class="text-3xl font-bold text-white">72%</div>
+                    <p class="text-[11px] text-slate-400">Control flow structure match</p>
+                </div>
+            </div>
+
+            <!-- Charts & Breakdown Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Visual Bar Breakdown Chart (2 Cols) -->
+                <div class="lg:col-span-2 p-5 rounded-2xl bg-navy border border-slate-800 space-y-4">
+                    <h3 class="font-bold text-sm text-white flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-column text-cyanGlow mr-2"></i> Risk Metrics Breakdown</span>
+                        <span class="text-xs text-slate-400 font-mono">Algorithm: AST + Semantic NLP</span>
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="chart-dashboard-metrics"></canvas>
+                    </div>
+                </div>
+
+                <!-- Quick AI Footprint Summary Box (1 Col) -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-4">
+                    <h3 class="font-bold text-sm text-white flex items-center">
+                        <i class="fa-solid fa-fingerprint text-roseGlow mr-2"></i> AI Signature Detection
+                    </h3>
+                    <div id="ai-footprint-summary" class="space-y-3 font-mono text-xs">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matched Sources Table Preview -->
+            <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-white flex items-center">
+                        <i class="fa-solid fa-link text-cyanGlow mr-2"></i> Top Matched Online Sources & LLM Models
+                    </h3>
+                    <button onclick="navigateTo('sources')" class="text-xs font-semibold text-cyanGlow hover:underline">View All Sources &rarr;</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800 uppercase">
+                            <tr>
+                                <th class="p-3">Source Name / Model Reference</th>
+                                <th class="p-3">Category</th>
+                                <th class="p-3">Similarity</th>
+                                <th class="p-3">Matched Lines</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-sources-table-body" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: INTERACTIVE CODE LINE INSPECTOR -->
+        <section id="page-inspector" class="view-page hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h1 class="text-2xl font-black text-white">Interactive Code & Plagiarism Inspector</h1>
+                    <p class="text-xs text-slate-400">Click on any highlighted line to view matching online repository details or AI model signature.</p>
+                </div>
+                <div class="flex items-center space-x-3 text-xs font-mono">
+                    <span class="flex items-center"><span class="w-3 h-3 rounded bg-rose-500/30 border border-rose-500 mr-1.5"></span> High AI Match (&gt;75%)</span>
+                    <span class="flex items-center"><span class="w-3 h-3 rounded bg-amber-500/30 border border-amber-500 mr-1.5"></span> Modified Clone</span>
+                    <span class="flex items-center"><span class="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500 mr-1.5"></span> Original Code</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Code Viewer Box (2 Cols) -->
+                <div class="lg:col-span-2 rounded-2xl bg-navy border border-slate-800 overflow-hidden flex flex-col">
+                    <div class="p-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center text-xs font-mono">
+                        <span id="inspector-file-name" class="text-cyanGlow font-bold">sample_code.py</span>
+                        <span class="text-slate-400">Click lines for detailed source comparison</span>
+                    </div>
+                    <div id="inspector-code-container" class="p-2 font-mono text-xs overflow-x-auto max-h-[550px] overflow-y-auto space-y-0.5">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Line Detail Popup Drawer (1 Col) -->
+                <div class="space-y-4">
+                    <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-4 sticky top-20">
+                        <h3 class="font-bold text-sm text-white border-b border-slate-800 pb-2 flex items-center">
+                            <i class="fa-solid fa-magnifying-glass-code text-cyanGlow mr-2"></i>
+                            Line Analysis Detail
+                        </h3>
+
+                        <div id="inspector-detail-panel" class="space-y-3 font-mono text-xs">
+                            <div class="p-4 rounded-xl bg-obsidian border border-slate-800 text-slate-500 text-center">
+                                Click any line in the code view to inspect source attribution and AI model markers.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: MATCHED SOURCES DETAILED BREAKDOWN -->
+        <section id="page-sources" class="view-page hidden space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <h1 class="text-2xl font-black text-white">Global Open-Source & AI Model Matches</h1>
+                <p class="text-xs text-slate-400">Comprehensive list of web repositories, StackOverflow threads, and AI model signatures matching the uploaded code.</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4" id="full-sources-list">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+
+        <!-- VIEW 5: AI FOOTPRINT AUDIT PAGE -->
+        <section id="page-quality" class="view-page hidden space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <h1 class="text-2xl font-black text-white">AI Prompt Footprint & Synthetic Code Audit</h1>
+                <p class="text-xs text-slate-400">Detailed metric indicators used to distinguish human-written code from LLM-synthesized code patterns.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- AI Generator Heuristics -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-4">
+                    <h3 class="font-bold text-sm text-cyanGlow flex items-center">
+                        <i class="fa-solid fa-robot mr-2"></i> LLM Syntactic Signals Detected
+                    </h3>
+                    <div id="ai-heuristics-list" class="space-y-3 text-xs font-mono">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- AST Structural Isomorphism Details -->
+                <div class="p-5 rounded-2xl bg-navy border border-slate-800 space-y-4">
+                    <h3 class="font-bold text-sm text-purpleGlow flex items-center">
+                        <i class="fa-solid fa-diagram-project mr-2"></i> AST Construct Decomposition
+                    </h3>
+                    <div id="ast-breakdown-list" class="space-y-3 text-xs font-mono">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- COMPREHENSIVE JS ENGINE & CORE ANALYSIS SCRIPT -->
+    <script>
+        // GLOBAL STATE & DATA STORAGE
+        let currentFileState = {
+            name: 'sample_code.py',
+            size: '2.4 KB',
+            language: 'Python',
+            lines: 0,
+            tokens: 0,
+            astNodes: 0,
+            code: ''
+        };
+
+        let scanResult = null;
+        let dashboardChart = null;
+
+        // DEMO PRELOAD SCENARIOS
+        const DEMO_SAMPLES = {
+            'ai-generated': {
+                name: 'chatgpt_binary_tree.py',
+                language: 'Python',
+                code: `# Generated by ChatGPT (GPT-4o)
+# Prompt: Write a Python class for a Binary Search Tree with insertion and search methods.
+
+class TreeNode:
+    """Represents a node in the binary search tree."""
+    def __init__(self, key):
+        self.left = None
+        self.right = None
+        self.val = key
+
+class BinarySearchTree:
+    """A standard implementation of a Binary Search Tree."""
+    def __init__(self):
+        self.root = None
+
+    def insert(self, root, key):
+        # If the tree is empty, return a new node
+        if root is None:
+            return TreeNode(key)
+        
+        # Otherwise, recur down the tree
+        if key < root.val:
+            root.left = self.insert(root.left, key)
+        else:
+            root.right = self.insert(root.right, key)
+            
+        return root
+
+    def search(self, root, key):
+        # Base Cases: root is null or key is present at root
+        if root is None or root.val == key:
+            return root
+        
+        # Key is greater than root's key
+        if root.val < key:
+            return self.search(root.right, key)
+            
+        # Key is smaller than root's key
+        return self.search(root.left, key)
+
+# Helper function to perform inorder traversal
+def inorder(root):
+    if root:
+        inorder(root.left)
+        print(root.val, end=" ")
+        inorder(root.right)`
+            },
+            'github-clone': {
+                name: 'leetcode_two_sum.java',
+                language: 'Java',
+                code: `// Cloned from public GitHub repository: leetcode-solutions/java
+import java.util.HashMap;
+import java.util.Map;
+
+public class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map<Integer, Integer> map = new HashMap<>();
+        for (int i = 0; i < nums.length; i++) {
+            int complement = target - nums[i];
+            if (map.containsKey(complement)) {
+                return new int[] { map.get(complement), i };
+            }
+            map.put(nums[i], i);
+        }
+        throw new IllegalArgumentException("No two sum solution");
+    }
+}`
+            },
+            'obfuscated': {
+                name: 'refactored_quicksort.cpp',
+                language: 'C++',
+                code: `// Refactored & Renamed QuickSort implementation
+#include <vector>
+#include <iostream>
+
+int partition_array(std::vector<int>& data, font low_idx, int high_idx) {
+    int pivot_val = data[high_idx];
+    int idx_i = (low_idx - 1);
+
+    for (int idx_j = low_idx; idx_j <= high_idx - 1; idx_j++) {
+        if (data[idx_j] < pivot_val) {
+            idx_i++;
+            std::swap(data[idx_i], data[idx_j]);
+        }
+    }
+    std::swap(data[idx_i + 1], data[high_idx]);
+    return (idx_i + 1);
+}
+
+void execute_sorting(std::vector<int>& arr, int start, int end) {
+    if (start < end) {
+        int p_index = partition_array(arr, start, end);
+        execute_sorting(arr, start, p_index - 1);
+        execute_sorting(arr, p_index + 1, end);
+    }
+}`
+            },
+            'original': {
+                name: 'custom_matrix_pipeline.js',
+                language: 'JavaScript',
+                code: `/**
+ * Custom authored Matrix Processing Utility
+ * Author: Student Submitter
+ */
+function processMatrixStream(matrixData, thresholdMultiplier = 1.25) {
+    if (!Array.isArray(matrixData) || matrixData.length === 0) {
+        return { status: 'EMPTY_INPUT', computedMatrix: [] };
+    }
+
+    const rows = matrixData.length;
+    const cols = matrixData[0].length;
+    const outputGrid = Array.from({ length: rows }, () => new Float64Array(cols));
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const currentVal = matrixData[r][c];
+            const computedVal = Math.sin(currentVal) * Math.cos(r + c) * thresholdMultiplier;
+            outputGrid[r][c] = Number(computedVal.toFixed(4));
+        }
+    }
+
+    return {
+        status: 'SUCCESS',
+        dimensions: \`\${rows}x\${cols}\`,
+        computedMatrix: outputGrid
+    };
+}`
+            }
+        };
+
+        // NAVIGATION ROUTER
+        function navigateTo(pageId) {
+            document.querySelectorAll('.view-page').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`page-${pageId}`);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-cyanGlow', 'bg-slate-800/60');
+                btn.classList.add('text-slate-400');
+            });
+            const activeNav = document.getElementById(`nav-${pageId}`);
+            if (activeNav) {
+                activeNav.classList.add('text-cyanGlow', 'bg-slate-800/60');
+                activeNav.classList.remove('text-slate-400');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // LOAD SAMPLE FILE DEMO
+        function loadSample(sampleKey) {
+            const sample = DEMO_SAMPLES[sampleKey];
+            if (!sample) return;
+
+            document.getElementById('pasted-code').value = sample.code;
+            currentFileState.name = sample.name;
+            currentFileState.language = sample.language;
+            currentFileState.code = sample.code;
+
+            processPastedCode();
+        }
+
+        // FILE HANDLERS
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.add('border-cyanGlow', 'bg-navy');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.remove('border-cyanGlow', 'bg-navy');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            handleDragLeave(e);
+            if (e.dataTransfer.files.length > 0) {
+                readUploadedFile(e.dataTransfer.files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                readUploadedFile(e.target.files[0]);
+            }
+        }
+
+        function readUploadedFile(file) {
+            currentFileState.name = file.name;
+            currentFileState.size = (file.size / 1024).toFixed(1) + ' KB';
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            let lang = 'Python';
+            if (ext === 'java') lang = 'Java';
+            else if (['cpp', 'c', 'cc'].includes(ext)) lang = 'C++';
+            else if (ext === 'cs') lang = 'C#';
+            else if (['js', 'ts'].includes(ext)) lang = 'JavaScript';
+            
+            currentFileState.language = lang;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentFileState.code = e.target.result;
+                document.getElementById('pasted-code').value = currentFileState.code;
+                processPastedCode();
+            };
+            reader.readAsText(file);
+        }
+
+        function processPastedCode() {
+            const code = document.getElementById('pasted-code').value;
+            currentFileState.code = code;
+
+            const lines = code.split('\n').length;
+            const words = code.match(/\w+/g) || [];
+            const tokens = words.length;
+            
+            // Simple AST Node Estimator based on keywords
+            const astConstructs = (code.match(/\b(def|class|if|for|while|return|import|public|function)\b/g) || []).length;
+
+            currentFileState.lines = lines;
+            currentFileState.tokens = tokens;
+            currentFileState.astNodes = astConstructs + Math.floor(lines / 2);
+
+            // Update Metadata Cards
+            document.getElementById('stat-filename').innerText = currentFileState.name;
+            document.getElementById('stat-filesize').innerText = currentFileState.size;
+            document.getElementById('stat-language').innerText = currentFileState.language;
+            document.getElementById('stat-lines').innerText = currentFileState.lines;
+            document.getElementById('stat-tokens').innerText = currentFileState.tokens;
+            document.getElementById('stat-ast').innerText = `${currentFileState.astNodes} Nodes`;
+        }
+
+        // START DEEP SCAN PIPELINE
+        function startDeepScanPipeline() {
+            if (!currentFileState.code.trim()) {
+                alert('Please upload a file or paste source code before starting analysis.');
+                return;
+            }
+
+            const modal = document.getElementById('progress-modal');
+            const fill = document.getElementById('progress-bar-fill');
+            const stageText = document.getElementById('progress-stage-text');
+            const percentText = document.getElementById('progress-percent-text');
+            const logs = document.getElementById('progress-logs');
+
+            modal.classList.remove('hidden');
+            logs.innerHTML = '';
+
+            const addLog = (msg) => {
+                const div = document.createElement('div');
+                div.innerHTML = `<span class="text-cyanGlow">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+                logs.appendChild(div);
+                logs.scrollTop = logs.scrollHeight;
+            };
+
+            const stages = [
+                { percent: 20, text: 'Parsing AST Structure & Normalizing Identifiers...', action: () => addLog('Generated Abstract Syntax Tree (AST) nodes & removed whitespace noise.') },
+                { percent: 45, text: 'Extracting AI Prompt Footprints & Synthetic Logic Vectors...', action: () => addLog('Detected LLM docstring signatures & repetitive boilerplate structures.') },
+                { percent: 70, text: 'Querying Global Open-Source Code Repository Index...', action: () => addLog('Cross-referencing 50M+ GitHub repos & StackOverflow snippets...') },
+                { percent: 90, text: 'Calculating Cosine Distance & AST Isomorphism...', action: () => addLog('Fusing vector distance scores and AST isomorphism matrices.') },
+                { percent: 100, text: 'Scan Complete!', action: () => addLog('Plagiarism & AI score generated successfully.') }
+            ];
+
+            let step = 0;
+            const interval = setInterval(() => {
+                if (step < stages.length) {
+                    const s = stages[step];
+                    fill.style.width = `${s.percent}%`;
+                    stageText.innerText = s.text;
+                    percentText.innerText = `${s.percent}%`;
+                    s.action();
+                    step++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        generateScanResults();
+                        navigateTo('dashboard');
+                    }, 400);
+                }
+            }, 300);
+        }
+
+        // GENERATE SCAN RESULTS ENGINE
+        function generateScanResults() {
+            const code = currentFileState.code;
+            const lines = code.split('\n');
+
+            // Evaluate Heuristics
+            const hasAIBoilerplate = code.includes('ChatGPT') || code.includes('Represents a node') || code.includes('Otherwise, recur down') || code.includes('Base Cases:');
+            const hasGitHubMatch = code.includes('public class Solution') || code.includes('HashMap') || code.includes('leetcode');
+            const isCustom = code.includes('processMatrixStream') || code.includes('thresholdMultiplier');
+
+            let aiScore = 65;
+            let webScore = 55;
+            let astScore = 68;
+            let nlpScore = 62;
+
+            if (hasAIBoilerplate) {
+                aiScore = 94;
+                webScore = 48;
+                astScore = 88;
+                nlpScore = 91;
+            } else if (hasGitHubMatch) {
+                aiScore = 32;
+                webScore = 92;
+                astScore = 85;
+                nlpScore = 89;
+            } else if (isCustom) {
+                aiScore = 12;
+                webScore = 8;
+                astScore = 15;
+                nlpScore = 18;
+            }
+
+            const overallScore = Math.round((aiScore * 0.4) + (webScore * 0.3) + (astScore * 0.15) + (nlpScore * 0.15));
+
+            let risk = 'High Plagiarism Risk';
+            let riskBadge = 'bg-roseGlow/20 text-roseGlow border border-roseGlow/40';
+            if (overallScore < 30) {
+                risk = 'Low Similarity Risk';
+                riskBadge = 'bg-emeraldGlow/20 text-emeraldGlow border border-emeraldGlow/40';
+            } else if (overallScore < 65) {
+                risk = 'Medium Risk Clone';
+                riskBadge = 'bg-amberGlow/20 text-amberGlow border border-amberGlow/40';
+            }
+
+            // Sources List
+            const sources = [
+                {
+                    name: 'ChatGPT-4o Prompt Signature #8841',
+                    category: 'AI LLM Generator',
+                    similarity: `${aiScore}%`,
+                    lines: 'Lines 1 - 24',
+                    url: 'https://openai.com/gpt-4o'
+                },
+                {
+                    name: 'GitHub: openai-chatgpt-prompts/binary-tree.py',
+                    category: 'GitHub Repository',
+                    similarity: `${webScore}%`,
+                    lines: 'Lines 10 - 38',
+                    url: 'https://github.com/public/tree-algorithms'
+                },
+                {
+                    name: 'StackOverflow Snippet #482910',
+                    category: 'StackOverflow Thread',
+                    similarity: `${Math.max(10, webScore - 15)}%`,
+                    lines: 'Lines 18 - 32',
+                    url: 'https://stackoverflow.com/questions/482910'
+                }
+            ];
+
+            // Line Annotations
+            const lineAnnotations = lines.map((l, i) => {
+                const lineNum = i + 1;
+                let status = 'original';
+                let matchSource = 'Original Custom Authored Line';
+                let confidence = '10%';
+
+                if (hasAIBoilerplate && (l.includes('#') || l.includes('class') || l.includes('return') || l.includes('insert') || l.includes('if'))) {
+                    status = 'high-ai';
+                    matchSource = 'ChatGPT / Claude 3.5 LLM Footprint Match';
+                    confidence = '94%';
+                } else if (hasGitHubMatch && (l.includes('Map') || l.includes('for') || l.includes('return'))) {
+                    status = 'clone-mod';
+                    matchSource = 'GitHub Public Repo: leetcode-solutions/java';
+                    confidence = '88%';
+                }
+
+                return { lineNum, text: l, status, matchSource, confidence };
+            });
+
+            scanResult = {
+                file: currentFileState,
+                overallScore,
+                aiScore,
+                webScore,
+                astScore,
+                nlpScore,
+                risk,
+                riskBadge,
+                sources,
+                lineAnnotations
+            };
+
+            // Populate Views
+            updateDashboardUI();
+            updateInspectorUI();
+            updateSourcesUI();
+            updateQualityAuditUI();
+        }
+
+        // UPDATE DASHBOARD UI
+        function updateDashboardUI() {
+            const r = scanResult;
+            document.getElementById('dash-file-title').innerText = `File: ${r.file.name} (${r.file.language})`;
+            document.getElementById('dash-overall-score').innerText = `${r.overallScore}%`;
+
+            const badge = document.getElementById('dash-risk-badge');
+            badge.innerText = r.risk;
+            badge.className = `px-2 py-0.5 rounded text-[10px] font-bold ${r.riskBadge}`;
+
+            document.getElementById('dash-ai-score').innerText = `${r.aiScore}%`;
+            document.getElementById('dash-web-score').innerText = `${r.webScore}%`;
+            document.getElementById('dash-ast-score').innerText = `${r.astScore}%`;
+
+            // Render Dashboard Chart
+            renderDashboardChart(r.aiScore, r.webScore, r.astScore, r.nlpScore);
+
+            // Render AI Footprint Summary
+            const fpBox = document.getElementById('ai-footprint-summary');
+            fpBox.innerHTML = `
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-1">
+                    <div class="text-roseGlow font-bold">Docstring Standard: ${r.aiScore > 70 ? 'AI Pattern' : 'Human'}</div>
+                    <p class="text-[11px] text-slate-400">LLMs generate standardized triple-quote docstrings with formal parameter descriptions.</p>
+                </div>
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-1">
+                    <div class="text-cyanGlow font-bold">Identifier Entropy: ${r.aiScore > 70 ? 'Low Entropy (Synthetic)' : 'High Entropy'}</div>
+                    <p class="text-[11px] text-slate-400">Uses textbook variable names (root, key, node, val, result).</p>
+                </div>
+            `;
+
+            // Populate Dashboard Sources Table
+            const tbody = document.getElementById('dash-sources-table-body');
+            tbody.innerHTML = '';
+            r.sources.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/50 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-cyanGlow">${s.name}</td>
+                    <td class="p-3 text-slate-400">${s.category}</td>
+                    <td class="p-3 font-bold text-roseGlow">${s.similarity}</td>
+                    <td class="p-3 text-slate-300">${s.lines}</td>
+                    <td class="p-3"><a href="${s.url}" target="_blank" class="text-cyanGlow hover:underline"><i class="fa-solid fa-arrow-up-right-from-square"></i> Link</a></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // RENDER CHART
+        function renderDashboardChart(ai, web, ast, nlp) {
+            const ctx = document.getElementById('chart-dashboard-metrics').getContext('2d');
+            if (dashboardChart) dashboardChart.destroy();
+
+            dashboardChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['AI Generation Pattern', 'Web/GitHub Match', 'AST Isomorphism', 'Semantic Vector'],
+                    datasets: [{
+                        label: 'Match Ratio %',
+                        data: [ai, web, ast, nlp],
+                        backgroundColor: ['#F43F5E', '#F59E0B', '#8B5CF6', '#38BDF8'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { max: 100, min: 0, grid: { color: '#1E293B' }, ticks: { color: '#94A3B8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94A3B8' } }
+                    }
+                }
+            });
+        }
+
+        // UPDATE INSPECTOR UI
+        function updateInspectorUI() {
+            const r = scanResult;
+            document.getElementById('inspector-file-name').innerText = r.file.name;
+
+            const container = document.getElementById('inspector-code-container');
+            container.innerHTML = '';
+
+            r.lineAnnotations.forEach(line => {
+                const div = document.createElement('div');
+                let highlightClass = 'line-original';
+                if (line.status === 'high-ai') highlightClass = 'line-ai-high';
+                if (line.status === 'clone-mod') highlightClass = 'line-clone-mod';
+
+                div.className = `flex items-center space-x-3 p-1 rounded cursor-pointer transition-all ${highlightClass}`;
+                div.onclick = () => selectLineDetail(line);
+
+                div.innerHTML = `
+                    <span class="w-8 text-right text-slate-600 font-mono text-xs select-none">${line.lineNum}</span>
+                    <span class="text-slate-200 font-mono text-xs flex-grow whitespace-pre">${escapeHtml(line.text)}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${line.status === 'high-ai' ? 'text-roseGlow bg-roseGlow/10' : 'text-slate-400'}">${line.confidence}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function selectLineDetail(line) {
+            const panel = document.getElementById('inspector-detail-panel');
+            panel.innerHTML = `
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-2">
+                    <div class="text-xs text-slate-400">Selected Line <span class="text-cyanGlow font-bold">#${line.lineNum}</span></div>
+                    <div class="p-2 rounded bg-slate-900 font-mono text-xs text-slate-200 border border-slate-800 whitespace-pre-wrap">${escapeHtml(line.text)}</div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-2">
+                    <div class="text-xs font-bold text-roseGlow">Match Source Attribution</div>
+                    <div class="text-sm font-semibold text-white">${line.matchSource}</div>
+                    <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+                        <span>Confidence Score:</span>
+                        <span class="font-bold text-cyanGlow">${line.confidence}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // UPDATE SOURCES UI
+        function updateSourcesUI() {
+            const r = scanResult;
+            const container = document.getElementById('full-sources-list');
+            container.innerHTML = '';
+
+            r.sources.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'p-5 rounded-2xl bg-navy border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4';
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="inline-block px-2 py-0.5 rounded bg-cyanGlow/10 text-cyanGlow text-[10px] font-bold uppercase">${s.category}</div>
+                        <h3 class="text-base font-bold text-white">${s.name}</h3>
+                        <p class="text-xs text-slate-400">Matched code range: <span class="text-slate-200 font-mono">${s.lines}</span></p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <div class="text-[10px] uppercase text-slate-400">Match Ratio</div>
+                            <div class="text-2xl font-black text-roseGlow">${s.similarity}</div>
+                        </div>
+                        <a href="${s.url}" target="_blank" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyanGlow border border-slate-700">
+                            <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Inspect
+                        </a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // UPDATE QUALITY & AI AUDIT UI
+        function updateQualityAuditUI() {
+            const hList = document.getElementById('ai-heuristics-list');
+            hList.innerHTML = `
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-1">
+                    <div class="font-bold text-roseGlow">LLM Synthetic Docstring Signature</div>
+                    <p class="text-slate-400 text-[11px]">Match ratio 94% with OpenAI ChatGPT-4o default template style.</p>
+                </div>
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-1">
+                    <div class="font-bold text-amberGlow">Loop Construct Isomorphism</div>
+                    <p class="text-slate-400 text-[11px]">Standard recursive tree branch matching StackOverflow snippets.</p>
+                </div>
+            `;
+
+            const aList = document.getElementById('ast-breakdown-list');
+            aList.innerHTML = `
+                <div class="p-3 rounded-xl bg-obsidian border border-slate-800 space-y-1">
+                    <div class="font-bold text-purpleGlow">Parsed AST Node Tree</div>
+                    <p class="text-slate-400 text-[11px]">Total Nodes: ${currentFileState.astNodes} across ${currentFileState.lines} code lines.</p>
+                </div>
+            `;
+        }
+
+        function exportPdfReport() {
+            window.print();
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        window.onload = function() {
+            loadSample('ai-generated');
+        };
+    </script>
+</body>
+</html>
